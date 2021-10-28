@@ -1,5 +1,5 @@
 CONFIG={}
-CONFIG['train_batch_size']=2
+CONFIG['train_batch_size']=1
 CONFIG['val_batch_size']=4
 CONFIG['test_batch_size']=1
 CONFIG['num_workers'] =4 

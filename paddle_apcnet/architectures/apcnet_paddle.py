@@ -148,8 +148,8 @@ class ACM(nn.Layer):
 
 class APCHead(nn.Layer):
     
-    def __init__(self, pool_scales=(1, 2, 3, 6), fusion=True, **kwargs):
-        super(APCHead, self).__init__(**kwargs)
+    def __init__(self, pool_scales=(1, 2, 3, 6), fusion=True, dropout_ratio=0.1):
+        super(APCHead, self).__init__()
         assert isinstance(pool_scales, (list, tuple))
 
         self.pool_scales = pool_scales
@@ -159,7 +159,10 @@ class APCHead(nn.Layer):
         self.conv_cfg=None
         self.norm_cfg='BN'
         self.act_cfg='relu'
-        
+        if dropout_ratio > 0:
+            self.dropout = nn.Dropout2D(dropout_ratio)
+        else:
+            self.dropout = None
         
         acm_modules = []
         for pool_scale in self.pool_scales:
@@ -201,10 +204,15 @@ class APCHead(nn.Layer):
         
         acm_outs = paddle.concat(acm_outs, axis=1)
         output = self.bottleneck(acm_outs)
-        output = self.conv_seg(output)
+        output = self.cls_seg(output)
         # print('acm head out ',output.shape) #[2, 19, 64, 128]
         return output
-
+    def cls_seg(self, feat):
+        """Classify each pixel."""
+        if self.dropout is not None:
+            feat = self.dropout(feat)
+        output = self.conv_seg(feat)
+        return output
     
 if __name__=='__main__':
     # models={}

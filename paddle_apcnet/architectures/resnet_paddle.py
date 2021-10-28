@@ -219,6 +219,7 @@ class ResNetV1C(nn.Layer):
         # print(x.shape) #[2, 512, 64, 128]
         x = self.layer3(x)
         # print(x.shape) #[2, 1024, 64, 128]
+        tmp=x
         x = self.layer4(x)
         # print(x.shape) #[2, 2048, 64, 128]
         # x = self.avgpool(x)
@@ -230,7 +231,7 @@ class ResNetV1C(nn.Layer):
         resnet torch layer 2  : torch.Size([2, 1024, 64, 128])
         resnet torch layer 3  : torch.Size([2, 2048, 64, 128])
         """
-        return x
+        return [tmp,x]
 
 def resnet101(pretrained=True):
     model = ResNetV1C(Bottleneck, [3, 4, 23, 3])

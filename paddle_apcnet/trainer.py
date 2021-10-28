@@ -114,20 +114,29 @@ class Trainer():
         return criterions
         pass
     def init_check(self):
-        assert len(self.models)==2
+        assert len(self.models)==3
         assert len(self.optimizers)==2
         assert len(self.criterions)==1
     def train_step(self,batch):
         self.optimizers['backbone'].clear_grad()
         self.optimizers['APCHead'].clear_grad()
         x,label=batch
-        feature=self.models['backbone'](x)
+        feature2=self.models['backbone'](x)[0] #0,1,2,3
+        feature3=self.models['backbone'](x)[1] #0,1,2,3
         # print('feature.shape',feature.shape)
-        pre=self.models['APCHead'](feature)
-        # print('pre.shape',pre.shape)
-        # loss=self.criterions['celoss'](pre,label)
+        pre1=self.models['APCHead'](feature3)
+        pre2=self.models['FCNHead'](feature2)
         
+        print('pre1.shape',pre1.shape)
+        print('pre2.shape',pre2.shape)
+        """
+        pre1.shape [1, 19, 64, 128]
+        pre2.shape [1, 19, 64, 128]
+        """
+        # loss=self.criterions['celoss'](pre,label)
+        #auxiliary_loss=self.criterions['celoss'](pre,label)
         # loss.backward()
+        # auxiliary_loss.backward(retain_graph=True)
         self.optimizers['backbone'].step()
         self.optimizers['APCHead'].step()
         # self.logger.info('x type {} dtype {}'.format(type(x),x.dtype))

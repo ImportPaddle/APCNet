@@ -31,6 +31,7 @@ class FCNHead(BaseDecodeHead):
         self.num_convs = num_convs
         self.concat_input = concat_input
         self.kernel_size = kernel_size
+        self._dasd=dilation
         super(FCNHead, self).__init__(**kwargs)
         if num_convs == 0:
             assert self.in_channels == self.channels
@@ -73,10 +74,24 @@ class FCNHead(BaseDecodeHead):
                 act_cfg=self.act_cfg)
 
     def forward(self, inputs):
+        
         """Forward function."""
+        print('num_convs',self.num_convs)
+        print('self.concat_input',self.concat_input)
+        print('self.kernel_size',self.kernel_size)
+        print('dilation',self._dasd)
+        print('self.in_channels',self.in_channels)
+        print('self.channels',self.channels)
+        print('self.dropout',self.dropout)
+        print('self.dropout_ratio',self.dropout_ratio)
         x = self._transform_inputs(inputs)
+        print('FCN head',x.shape) #[2, 1024, 64, 128]
         output = self.convs(x)
+        print(output.shape) #[2, 256, 64, 128]
         if self.concat_input:
+            print('conv_cat fcn_head')
             output = self.conv_cat(torch.cat([x, output], dim=1))
+            print('conv_cat fcn_head output',output.shape)
         output = self.cls_seg(output)
+        print('fcn output.shape',output.shape) #[2, 19, 64, 128]
         return output

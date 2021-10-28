@@ -168,7 +168,7 @@ class APCHead(BaseDecodeHead):
             conv_cfg=self.conv_cfg,
             norm_cfg=self.norm_cfg,
             act_cfg=self.act_cfg)
-
+        print('self.dropout_ratio apchead',self.dropout_ratio)
     def forward(self, inputs):
         """Forward function."""
         # print('self.in_channels',self.in_channels)
