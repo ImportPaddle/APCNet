@@ -205,10 +205,12 @@ class Trainer():
         paddle.save(state,save_path)
         self.logger.info('save ckpt inter:{}'.format(self.inter))
     def delete_checkpoint(self):
-        if self.inter!=0:
-            
-            delete_path=os.path.join(self.exp_dir,'ckpt',str(self.inter-self.train_save_step)+'.pdparams')
-            os.remove(delete_path)
+        ckpts=list(glob.glob(self.exp_dir+'/ckpt/*.pdparams'))
+        for ckpt in ckpts:
+            inter=int(ckpt.split('/')[-1].split('.')[0])
+            if inter!=self.inter:
+                delete_path=os.path.join(self.exp_dir,'ckpt',str(inter)+'.pdparams')
+                os.remove(delete_path)
     def load_checkpoint(self):
         if self.resume_inter=='latest':
             ckpts=list(glob.glob(self.exp_dir+'/ckpt/*.pdparams'))

@@ -15,7 +15,7 @@ Decode Head: APCHead
 
 Auxiliary Head: FCNHead
 
-## 环境
+## Environment
 
 
 
@@ -32,11 +32,7 @@ python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
 
 
 
-
-
-
-
-
+## Pretrained model：
 
 ```yml
 #mmcv resnet101_v1c  mmcv/model_zoo/open_mmlab.json:
@@ -44,4 +40,38 @@ python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
 ```
 
 
+
+## Dataset：
+
+### Cityscapes:
+
+gtFine 5000
+
+1. Downdown to ./dataset
+
+2. sh prepare.sh
+3. cd cityscapesscripts/preparation
+4. python createTrainIdLabelImgs.py
+
+
+
+
+
+## Train:
+
+Paddle:
+
+```shell
+cd paddle_apcnet
+sh paddle.sh
+```
+
+
+
+Torch:
+
+```shell
+cd torch_apcnet
+sh torch.sh
+```
 
