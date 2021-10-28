@@ -82,7 +82,10 @@ class CityScapesDataset(Dataset):
         id2=labelFile.split('_')[2]
         assert(id1==id2)
         img=np.array(Image.open(imgFile)).astype(np.uint8)#RGB hwc (1024, 2048, 3)
-        label=np.array(Image.open(labelFile))
+        label=np.array(Image.open(labelFile)).astype(np.int64)
+        # img=paddle.to_tensor(img,dtype='float32')
+        # label=paddle.to_tensor(img,dtype='int64')
+        
         '''
         Labels:
         {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 255}
