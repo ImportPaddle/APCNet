@@ -44,7 +44,7 @@ class CityScapesDataset(Dataset):
         transforms=[]
         if mode=='train':
             transforms.append(ResizeStepScaling(min_scale_factor=0.5,max_scale_factor=2.0,scale_step_size=0))
-            transforms.append(RandomPaddingCrop((512,1024)))
+            transforms.append(RandomPaddingCrop((1024,512)))
             transforms.append(RandomHorizontalFlip(0.5))
             transforms.append(RandomDistort(brightness_range=0.25,brightness_prob=1,\
                                 contrast_range= 0.25 \
@@ -81,7 +81,7 @@ class CityScapesDataset(Dataset):
         id1=imgFile.split('_')[2]
         id2=labelFile.split('_')[2]
         assert(id1==id2)
-        img=np.array(Image.open(imgFile)).astype(np.uint8)#RGB 第一个维度是宽度，第二个维度是高度 (1024, 2048, 3)
+        img=np.array(Image.open(imgFile)).astype(np.uint8)#RGB hwc (1024, 2048, 3)
         label=np.array(Image.open(labelFile))
         '''
         Labels:
@@ -97,7 +97,9 @@ class CityScapesDataset(Dataset):
             label = label
             return im, label
         else:
+            # print(img.shape)
             im, label = self.transforms(im=img, label=label)
+            # print(im.shape)
             return im, label
 
         
@@ -121,9 +123,9 @@ def main():
     assert(len(trainset)+len(valset)+len(testset)==5000)
     print(len(trainset)+len(valset)+len(testset))
     labels=set()
-    for batch_id, ele in enumerate(tqdm(valLoader)):
+    for batch_id, ele in enumerate(tqdm(trainLoader)):
         x,y=ele
-        # print(x.shape)
+        print(x.shape)
         print(y.dtype)
         y=y.numpy()
         flatten=y.flatten().tolist()
@@ -135,5 +137,36 @@ def main():
     #plt.imshow(img)
     
     #plt.savefig('./tmp/tmp.png')
+def test():
+    # transforms=[]
+    # transforms.append(ResizeStepScaling(min_scale_factor=0.5,max_scale_factor=2.0,scale_step_size=0))
+    # transforms.append(RandomPaddingCrop((512,1024)))
+    # transforms.append(RandomHorizontalFlip(0.5))
+    # transforms.append(RandomDistort(brightness_range=0.25,brightness_prob=1,\
+    #                             contrast_range= 0.25 \
+    #                             ,contrast_prob=1 \
+    #                             ,saturation_range=0.25 \
+    #                             ,saturation_prob=1 \
+    #                             ,hue_range=63 \
+    #                             ,hue_prob=1))
+    #         # transforms.append(Pad())
+    # transforms.append(Normalize(mean=[0.485, 0.456, 0.406], 
+    #                               std=[0.229, 0.224, 0.225],
+    #                             #   data_format='HWC'
+    #                               ))
+    img=Image.open('/app/wht/paddle/apcnet/dataset/cityscapes/leftImg8bit/train/aachen/aachen_000000_000019_leftImg8bit.png')
+    img=np.array(img).astype('uint8') #1024 2048 3
+    crop=Compose([RandomPaddingCrop((1024,512))]) #w,h
+    # crop=RandomPaddingCrop([1024,512])
+    print(img.shape)
+    plt.imshow(img)
+    plt.savefig('./tmp/crop1.png')
+    img=crop(img)   #compose (3, 512, 1024)  no compose:(512, 1024, 3)
+    print(img[0].shape)
+    _=img[0].transpose([1,2,0]) #(512, 1024, 3)
+    print(_.shape)
+    plt.imshow(_)
+    plt.savefig('./tmp/crop2.png')
 if __name__=="__main__":
+    # test()
     main()

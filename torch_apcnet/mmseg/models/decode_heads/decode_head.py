@@ -162,6 +162,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
         """
 
         if self.input_transform == 'resize_concat':
+            # print('1addsdasadsad')
             inputs = [inputs[i] for i in self.in_index]
             upsampled_inputs = [
                 resize(
@@ -172,10 +173,15 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
             ]
             inputs = torch.cat(upsampled_inputs, dim=1)
         elif self.input_transform == 'multiple_select':
+            # print('ddsasadaddsddasasadsad')
             inputs = [inputs[i] for i in self.in_index]
         else:
-            inputs = inputs[self.in_index]
-
+            # print('324231addsdasadsad')
+            # print(len(inputs))
+            # print('self.in_index',self.in_index) 
+            inputs = inputs[self.in_index] #3,2 [2, 2048, 64, 128] [2, 1024, 64, 128]
+            # print(inputs.shape)
+            # print('324231addsdasadsad')
         return inputs
 
     @auto_fp16()

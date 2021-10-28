@@ -462,8 +462,10 @@ class ResNet(BaseModule):
         self.base_channels = base_channels
         self.num_stages = num_stages
         assert num_stages >= 1 and num_stages <= 4
-        self.strides = strides
+        self.strides = strides 
         self.dilations = dilations
+        print('self.strides',strides) #(1, 2, 1, 1)
+        print('dilations :', dilations) #(1, 1, 2, 4)
         assert len(strides) == len(dilations) == num_stages
         self.out_indices = out_indices
         assert max(out_indices) < num_stages
@@ -660,19 +662,30 @@ class ResNet(BaseModule):
 
     def forward(self, x):
         """Forward function."""
+        print('resnet ',x.shape) #[2, 3, 512, 1024]
         if self.deep_stem:
             x = self.stem(x)
+    
         else:
             x = self.conv1(x)
             x = self.norm1(x)
             x = self.relu(x)
+        print('resnet stem',x.shape)
         x = self.maxpool(x)
+        print('resnet maxpool',x.shape) #[2, 64, 128, 256]
         outs = []
         for i, layer_name in enumerate(self.res_layers):
             res_layer = getattr(self, layer_name)
             x = res_layer(x)
+            print('resnet torch layer {}  : {}'.format(i,x.shape))
             if i in self.out_indices:
                 outs.append(x)
+        """
+        resnet torch layer 0  : torch.Size([2, 256, 128, 256])
+        resnet torch layer 1  : torch.Size([2, 512, 64, 128])
+        resnet torch layer 2  : torch.Size([2, 1024, 64, 128])
+        resnet torch layer 3  : torch.Size([2, 2048, 64, 128])
+        """
         return tuple(outs)
 
     def train(self, mode=True):
@@ -698,6 +711,7 @@ class ResNetV1c(ResNet):
     """
 
     def __init__(self, **kwargs):
+        
         super(ResNetV1c, self).__init__(
             deep_stem=True, avg_down=False, **kwargs)
 

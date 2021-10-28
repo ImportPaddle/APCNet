@@ -2,9 +2,34 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 
-from . import resnet_paddle
+# from . import resnet_paddle
+# import resnet_paddle
+import warnings
+def resize(input,
+           size=None,
+           scale_factor=None,
+           mode='nearest',
+           align_corners=False,
+           warning=True):
+    if warning:
+        if size is not None and align_corners:
+            input_h, input_w = tuple(int(x) for x in input.shape[2:])
+            output_h, output_w = tuple(int(x) for x in size)
+            if output_h > input_h or output_w > output_h:
+                if ((output_h > 1 and output_w > 1 and input_h > 1
+                     and input_w > 1) and (output_h - 1) % (input_h - 1)
+                        and (output_w - 1) % (input_w - 1)):
+                   
+                    warnings.warn(
+                        f'When align_corners={align_corners}, '
+                        'the output would more aligned if '
+                        f'input size {(input_h, input_w)} is `x+1` and '
+                        f'out size {(output_h, output_w)} is `nx+1`')
+                    pass
+    return F.interpolate(input, size, scale_factor, mode, align_corners)
+
 class ConvModule(nn.Layer):
-    def __init__(self,in_channels,out_channels,kernel_size=1,padding=1,conv_cfg='conv2',norm_cfg='syncbn',act_cfg='relu'):
+    def __init__(self,in_channels,out_channels,kernel_size=1,padding=0,conv_cfg=None,norm_cfg='bn',act_cfg='relu'):
         super(ConvModule, self).__init__()
         self.conv=nn.Conv2D(in_channels,out_channels,kernel_size=kernel_size,padding=padding)
         self.bn=nn.BatchNorm2D(out_channels)
@@ -70,38 +95,50 @@ class ACM(nn.Layer):
 
     def forward(self, x):
         """Forward function."""
+        # print('input acm shape ',x.shape) #[2, 2048, 64, 128]
+        # print('self.pool_scale',self.pool_scale) #1
         pooled_x = F.adaptive_avg_pool2d(x, self.pool_scale)
+        # print('pooled1_x',pooled_x.shape)  #[2, 2048, 1, 1]
         # [batch_size, channels, h, w]
         x = self.input_redu_conv(x)
+        # print('xxxx',x.shape) #[2, 51, 64, 128]
         # [batch_size, channels, pool_scale, pool_scale]
         pooled_x = self.pooled_redu_conv(pooled_x)
+        # print('pooled_x pooled_redu_conv,',pooled_x.shape) #2, 51, 1, 1]
+        
         batch_size = x.shape[0]
         # [batch_size, pool_scale * pool_scale, channels]
         
-        pooled_x=paddle.reshape(pooled_x,(batch_size, self.channels,-1))
+        pooled_x=pooled_x.reshape((batch_size,self.channels,-1))
         pooled_x=pooled_x.transpose((0, 2, 1))
         # pooled_x = pooled_x.view(batch_size, self.channels,
         #                          -1).permute(0, 2, 1).contiguous()
         # [batch_size, h * w, pool_scale * pool_scale]
         # print('----')
-        _=self.global_info(F.adaptive_avg_pool2d(x, 1))
+        # print('pooled_x',pooled_x.shape)  #[2, 1, 512]
+        tmp=self.global_info(F.adaptive_avg_pool2d(x, 1))
         
-        # print(_.shape)
+        # print('tmp.shape',tmp.shape) #2, 512, 1, 1]
         # print(x.shape)
-        _=paddle.reshape(_,shape=x.shape[2:])
-        print(_.shape)
-        tmp=x + _
-        tmp=self.gla(tmp)
     
-        affinity_matrix = tmp.transpose(0, 2, 3, 1).reshape(
-                                       batch_size, -1, self.pool_scale**2)
+        # print(x.shape[2:]) #[64, 128] 
+        tmp=resize(tmp,x.shape[2:])
+        # print('reszie',tmp.shape) #[2, 512, 64, 128]
+        tmp=x + tmp
+        # print('x+tmp',tmp.shape) #[2, 512, 64, 128]
+        
+        tmp=self.gla(tmp)
+        # print('gla',tmp.shape) #[2, 1, 64, 128]
+        
+        affinity_matrix = tmp.transpose([0, 2, 3, 1]).reshape(
+                                       [batch_size, -1, self.pool_scale**2])
         affinity_matrix = F.sigmoid(affinity_matrix)
         # [batch_size, h * w, channels]
         z_out = paddle.matmul(affinity_matrix, pooled_x)
         # [batch_size, channels, h * w]
-        z_out = z_out.permute(0, 2, 1).contiguous()
+        z_out = z_out.transpose([0, 2, 1])
         # [batch_size, channels, h, w]
-        z_out = z_out.view(batch_size, self.channels, x.size(2), x.size(3))
+        z_out = z_out.reshape([batch_size, self.channels, x.shape[2], x.shape[3]])
         z_out = self.residual_conv(z_out)
         z_out = F.relu(z_out + x)
         if self.fusion:
@@ -118,10 +155,11 @@ class APCHead(nn.Layer):
         self.pool_scales = pool_scales
         self.fusion = fusion
         self.in_channels=2048
-        self.channels=20
+        self.channels=512
         self.conv_cfg=None
-        self.norm_cfg='SyncBN'
+        self.norm_cfg='BN'
         self.act_cfg='relu'
+        
         
         acm_modules = []
         for pool_scale in self.pool_scales:
@@ -144,42 +182,36 @@ class APCHead(nn.Layer):
             conv_cfg=self.conv_cfg,
             norm_cfg=self.norm_cfg,
             act_cfg=self.act_cfg)
-
+        self.conv_seg=nn.Conv2D(512, 19, kernel_size=1,stride=1, bias_attr=False)
+    def _transform_inputs(self,x):
+        return [x for i in range(5)]
     def forward(self, x):
-        # x = self.backbone(inputs)
+        
+        
+        # print('x.shape',x.shape) #[2, 2048, 64, 128]
         acm_outs = [x]
-        i=0
+        
         for acm_module in self.acm_modules:
-            print(i)
             acm_outs.append(acm_module(x))
-        acm_outs = paddle.cat(acm_outs, dim=1)
+            
+        # i=0
+        # for ele in acm_outs:
+        #     print('acm module{}'.format(i), ele.shape)
+        #     i+=1
+        
+        acm_outs = paddle.concat(acm_outs, axis=1)
         output = self.bottleneck(acm_outs)
-        output = self.cls_seg(output)
+        output = self.conv_seg(output)
+        # print('acm head out ',output.shape) #[2, 19, 64, 128]
         return output
 
-class ResAPC(nn.Layer):
-    
-    def __init__(self, pool_scales=(1, 2, 3, 6), fusion=True, **kwargs):
-        super(ResAPC, self).__init__(**kwargs)
-        assert isinstance(pool_scales, (list, tuple))
-        self.backbone=resnet_paddle.resnet101()
-        self.apchead=APCHead()
-
-    def forward(self, x):
-        # x = self.backbone(inputs)
-        # print(x.shape)
-        x=self.backbone(x)
-        print(x.shape)
-        x=self.apchead(x)
-        return x
     
 if __name__=='__main__':
-    x=paddle.normal(shape=[1,3,512,1024])
-    # print(x.shape)
-    # x=x.transpose(perm=[1, 0, 2,3])
-    print(x.shape)
-    # x=paddle.normal(shape=[1,1024])
-    model=nn.Sequential()
+    # models={}
+    # models,msg1=resnet101()
+    model=APCHead()
+    x=paddle.normal(shape=[2, 2048, 64, 128])
     out=model(x)
-    print(out)
+    # print(model)
+    # paddle.summary(model, [2, 2048, 64, 128]) #[2, 2048, 64, 128]
     

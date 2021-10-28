@@ -78,19 +78,41 @@ class ACM(nn.Module):
 
     def forward(self, x):
         """Forward function."""
+        print('input acm shape ',x.shape) #[2, 2048, 64, 128]
+        print('self.pool_scale',self.pool_scale) #1
         pooled_x = F.adaptive_avg_pool2d(x, self.pool_scale)
+        print('pooled1_x',pooled_x.shape) #[2, 2048, 1, 1]
         # [batch_size, channels, h, w]
         x = self.input_redu_conv(x)
+        print('xxxx',x.shape) #[2, 512, 64, 128]
         # [batch_size, channels, pool_scale, pool_scale]
         pooled_x = self.pooled_redu_conv(pooled_x)
+        print('pooled_x pooled_redu_conv,',pooled_x.shape) #[2, 512, 1, 1]
+        
         batch_size = x.size(0)
         # [batch_size, pool_scale * pool_scale, channels]
         pooled_x = pooled_x.view(batch_size, self.channels,
                                  -1).permute(0, 2, 1).contiguous()
         # [batch_size, h * w, pool_scale * pool_scale]
-        affinity_matrix = self.gla(x + resize(
-            self.global_info(F.adaptive_avg_pool2d(x, 1)), size=x.shape[2:])
-                                   ).permute(0, 2, 3, 1).reshape(
+        print('pooled_x',pooled_x.shape) #[2, 1, 512] 1,4,9,36
+        
+        tmp=self.global_info(F.adaptive_avg_pool2d(x, 1))
+        print('tmp.shape ',tmp.shape) #[2, 512, 1, 1]
+        
+        print(x.shape[2:]) #[64, 128]
+        
+        tmp=resize(
+            tmp, size=x.shape[2:])
+        
+        print('reszie',tmp.shape) #[2, 512, 64, 128]
+        
+        tmp=x+tmp 
+        print('x+tmp',tmp.shape) #[2, 512, 64, 128]
+        
+        tmp=self.gla(tmp)
+        print('gla',tmp.shape) #[2, 1, 64, 128]
+        
+        affinity_matrix =tmp.permute(0, 2, 3, 1).reshape(
                                        batch_size, -1, self.pool_scale**2)
         affinity_matrix = F.sigmoid(affinity_matrix)
         # [batch_size, h * w, channels]
@@ -149,13 +171,39 @@ class APCHead(BaseDecodeHead):
 
     def forward(self, inputs):
         """Forward function."""
-        # print(len(inputs))
-        # print(inputs[0].shape)
+        # print('self.in_channels',self.in_channels)
+        # print('self.channels',self.channels)
+        # print('self.conv_cfg',self.conv_cfg)
+        # print('self.norm_cfg',self.norm_cfg)
+        # print('self.act_cfg',self.act_cfg)
+        # print(type(inputs)) #tuple
+        # print(len(inputs)) #len 4
+        # print(inputs[0].shape) #[2, 256, 128, 256]
+        # print(inputs[1].shape) #[2, 512, 64, 128]
+        # print(inputs[2].shape) #[2, 1024, 64, 128]
+        # print(inputs[3].shape) #[2, 2048, 64, 128]
         x = self._transform_inputs(inputs)
+        # print('x',x.shape) #index 3   [2, 2048, 64, 128]
+
+        
+        print('x.shape',x.shape) #[2, 2048, 64, 128]
         acm_outs = [x]
+        
         for acm_module in self.acm_modules:
             acm_outs.append(acm_module(x))
+        i=0
+        for ele in acm_outs:
+            print('acm module{}'.format(i), ele.shape)
+            i+=1
+        # x input torch.Size([2, 2048, 64, 128])
+        # acm module0 torch.Size([2, 512, 64, 128])
+        # acm module1 torch.Size([2, 512, 64, 128])
+        # acm module2 torch.Size([2, 512, 64, 128])
+        # acm module3 torch.Size([2, 512, 64, 128])
         acm_outs = torch.cat(acm_outs, dim=1)
+        print('acm_outs',acm_outs.shape) #[2, 4096, 64, 128]
         output = self.bottleneck(acm_outs)
+        print('bottleneck',acm_outs.shape) #[2, 4096, 64, 128]
         output = self.cls_seg(output)
+        print(output.shape) #[2, 19, 64, 128]
         return output

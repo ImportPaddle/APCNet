@@ -23,6 +23,7 @@ class Trainer():
         self.optimizers=self.init_optimizers()
         self.criterions=self.init_criterions()
         self.init_check()
+        self.stepEachEpoch=(len(self.dataloaders['train'])+1)
         self.train_display_step=50
         self.evl_step=3000
         self.logger.info('init complete')
@@ -100,7 +101,7 @@ class Trainer():
                                     weight_decay=backboneCfg['weight_decay'])
                                                 # paddle.optimizer.SGD(learning_rate=0.001, parameters=None, weight_decay=None)
         apcnetCfg=self.config['optimizers']['APCHead']
-        scheduler = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=5, gamma=0.8, verbose=True)
+        scheduler = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=int(self.max_inter/250), gamma=0.98, verbose=True)
         optimizers['APCHead']= paddle.optimizer.Momentum(
                                     parameters=self.models['APCHead'].parameters(),
                                     learning_rate=scheduler,
@@ -121,11 +122,12 @@ class Trainer():
         self.optimizers['APCHead'].clear_grad()
         x,label=batch
         feature=self.models['backbone'](x)
+        # print('feature.shape',feature.shape)
         pre=self.models['APCHead'](feature)
         # print('pre.shape',pre.shape)
-        loss=self.criterions['celoss'](pre,label)
+        # loss=self.criterions['celoss'](pre,label)
         
-        loss.backward()
+        # loss.backward()
         self.optimizers['backbone'].step()
         self.optimizers['APCHead'].step()
         # self.logger.info('x type {} dtype {}'.format(type(x),x.dtype))

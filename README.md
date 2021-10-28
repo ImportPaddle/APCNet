@@ -12,3 +12,7 @@ python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
 
 
 Cityscapes 79.08%
+
+
+mmcv resnet101_v1c
+mmcv/model_zoo/open_mmlab.json

@@ -63,7 +63,9 @@ class ResLayer(Sequential):
                 build_norm_layer(norm_cfg, planes * block.expansion)[1]
             ])
             downsample = nn.Sequential(*downsample)
-
+            print('-------------downsample-------------')
+            print(inplanes,' ',planes * block.expansion,' ',conv_stride)
+            print('-------------downsample-------------')
         layers = []
         if multi_grid is None:
             if dilation > 1 and contract_dilation:
@@ -84,6 +86,7 @@ class ResLayer(Sequential):
                 **kwargs))
         inplanes = planes * block.expansion
         for i in range(1, num_blocks):
+            print('dilation if multi_grid is None else multi_grid[i]',dilation if multi_grid is None else multi_grid[i])
             layers.append(
                 block(
                     inplanes=inplanes,
