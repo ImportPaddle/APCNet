@@ -6,8 +6,10 @@ import errno
 import numpy as np
 import sys
 import csv
+
 from paddleseg.transforms import Compose,Resize,Normalize,RandomHorizontalFlip,RandomDistort,ResizeStepScaling,RandomPaddingCrop
 from paddle.fluid.dataloader.collate import default_collate_fn
+from paddle.vision.transforms import CenterCrop
 from pdb import set_trace as breakpoint
 from paddle.io import DataLoader
 import glob
@@ -59,13 +61,17 @@ class CityScapesDataset(Dataset):
                                 #   data_format='HWC'
                                   ))
             # self.transform.append(Resize(size=32))
-        elif mode=='val' or mode=='test':
-            # transform.append(CenterCrop((512,1024)))
+        elif mode=='val':
+            transforms.append(RandomPaddingCrop((1024,512)))
             transforms.append(Normalize(mean=[0.485, 0.456, 0.406], 
                                   std=[0.229, 0.224, 0.225],
                                 #   data_format='HWC'
                                   ))
-            
+        elif mode=='test':
+            transforms.append(Normalize(mean=[0.485, 0.456, 0.406], 
+                                  std=[0.229, 0.224, 0.225],
+                                #   data_format='HWC'
+                                  ))
         self.transforms=Compose(transforms)
         '''
         ['BaseTransform', 'Compose', 'Resize', 'RandomResizedCrop', 'CenterCrop', 
@@ -96,8 +102,8 @@ class CityScapesDataset(Dataset):
             im, _ = self.transforms(im=img)
             return im
         elif self.mode == 'val':
-            im, _ = self.transforms(im=img)
-            label = label
+            im, label = self.transforms(im=img, label=label)
+            # label = label
             return im, label
         else:
             # print(img.shape)
@@ -126,15 +132,15 @@ def main():
     assert(len(trainset)+len(valset)+len(testset)==5000)
     print(len(trainset)+len(valset)+len(testset))
     labels=set()
-    for batch_id, ele in enumerate(tqdm(trainLoader)):
+    for batch_id, ele in enumerate(tqdm(valLoader)):
         x,y=ele
         print(x.shape)
         print(y.dtype)
-        y=y.numpy()
-        flatten=y.flatten().tolist()
-        _=set(flatten)
-        labels = labels | _
-        print(len(labels))
+        # y=y.numpy()
+        # flatten=y.flatten().tolist()
+        # _=set(flatten)
+        # labels = labels | _
+        # print(len(labels))
     print(labels)
     #(1024, 2048, 3) #h,w,c
     #plt.imshow(img)

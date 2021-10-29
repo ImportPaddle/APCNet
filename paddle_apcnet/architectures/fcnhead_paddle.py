@@ -31,7 +31,7 @@ def resize(input,
 class ConvModule(nn.Layer):
     def __init__(self,in_channels,out_channels,kernel_size=1,padding=0,dilation=1,conv_cfg=None,norm_cfg='bn',act_cfg='relu'):
         super(ConvModule, self).__init__()
-        self.conv=nn.Conv2D(in_channels,out_channels,kernel_size=kernel_size,padding=padding,dilation=dilation)
+        self.conv=nn.Conv2D(in_channels,out_channels,kernel_size=kernel_size,padding=padding,dilation=dilation, bias_attr=False)
         self.bn=nn.BatchNorm2D(out_channels)
         self.relu=nn.ReLU()
     def forward(self,x):

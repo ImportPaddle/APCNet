@@ -31,7 +31,7 @@ def resize(input,
 class ConvModule(nn.Layer):
     def __init__(self,in_channels,out_channels,kernel_size=1,padding=0,conv_cfg=None,norm_cfg='bn',act_cfg='relu'):
         super(ConvModule, self).__init__()
-        self.conv=nn.Conv2D(in_channels,out_channels,kernel_size=kernel_size,padding=padding)
+        self.conv=nn.Conv2D(in_channels,out_channels,kernel_size=kernel_size,padding=padding, bias_attr=False)
         self.bn=nn.BatchNorm2D(out_channels)
         self.relu=nn.ReLU()
     def forward(self,x):
@@ -159,6 +159,7 @@ class APCHead(nn.Layer):
         self.conv_cfg=None
         self.norm_cfg='BN'
         self.act_cfg='relu'
+        self.conv_seg=nn.Conv2D(512, 19, kernel_size=1,stride=1)
         if dropout_ratio > 0:
             self.dropout = nn.Dropout2D(dropout_ratio)
         else:
@@ -185,7 +186,7 @@ class APCHead(nn.Layer):
             conv_cfg=self.conv_cfg,
             norm_cfg=self.norm_cfg,
             act_cfg=self.act_cfg)
-        self.conv_seg=nn.Conv2D(512, 19, kernel_size=1,stride=1, bias_attr=False)
+        
     def _transform_inputs(self,x):
         return [x for i in range(5)]
     def forward(self, x):

@@ -11,19 +11,21 @@ from  config import CONFIG
 import paddle.nn.functional as F
 import warnings
 import glob 
+import numpy as np
+
 warnings.filterwarnings('ignore')
 class Trainer():
     def __init__(self,expName,resume=True,resume_inter='latest',config=None):
         super(Trainer,self).__init__()
+        self.max_inter=65000
+        self.inter=0
         self.config=CONFIG
         self.root=os.getcwd()
         self.resume=resume
         self.resume_inter=resume_inter
-        self.exp_dir=self.init_exp_dir(expName=expName)
         
+        self.exp_dir=self.init_exp_dir(expName=expName)
         self.logger=self.init_logger()
-        self.inter=0
-        self.max_inter=65000
         self.models=self.init_models()
         self.dataloaders=self.init_dataloaders()
         self.optimizers=self.init_optimizers()
@@ -32,26 +34,30 @@ class Trainer():
         self.stepEachEpoch=(len(self.dataloaders['train'])+1)
         self.train_display_step=50
         self.train_save_step=2000
-        self.evl_step=3000
+        self.val_step=4000
         self.logger.info('init complete')
     def run(self):
         ##resume
         if self.resume:
             self.resume_experiment()
-            
+        self.LossTotal=0
         while(self.inter<self.max_inter):
             for batch_id, batch in enumerate(tqdm(self.dataloaders['train']())):
+                 
                 record=self.train_step(batch_id,batch)
-                if batch_id %  self.train_display_step == 0 or record:
+                if batch_id %  self.train_display_step == 0:
                     self.logger.info(record)
+                    self.LossTotal=0
                 if self.inter%self.train_save_step==0:
                     self.save_checkpoint()
                     self.delete_checkpoint()
+                
+                if self.inter%self.val_step==0:
+                    self.val()
                 self.inter+=1
                 
     def resume_experiment(self):
-        self.load_checkpoint()
-        
+        self.load_checkpoint()  
     def init_exp_dir(self,expName):
         expdir=os.path.join(self.root,'experiments',expName)
         if os.path.exists(expdir) and not self.resume:
@@ -125,7 +131,7 @@ class Trainer():
         apcnetCfg=self.config['optimizers']['APCHead']
         
         # step_size=5
-        self.scheduler['APCHead'] = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=1, gamma=0.98, verbose=False)
+        self.scheduler['APCHead'] = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=1, gamma=0.99, verbose=False)
         optimizers['APCHead']= paddle.optimizer.Momentum(
                                     parameters=self.models['APCHead'].parameters(),
                                     learning_rate=self.scheduler['APCHead'],
@@ -150,6 +156,10 @@ class Trainer():
         assert len(self.optimizers)==3
         assert len(self.criterions)==1
     def train_step(self,batch_id,batch):
+        self.models['backbone'].train()
+        self.models['APCHead'].train()
+        self.models['FCNHead'].train()
+        
         self.optimizers['backbone'].clear_grad()
         self.optimizers['APCHead'].clear_grad()
         x,label=batch
@@ -170,9 +180,9 @@ class Trainer():
         pre2.shape [1, 19, 64, 128]
         """
         # print(label.dtype)
-        loss1=0.99*self.criterions['celoss'](pre1,label)+0.01*self.criterions['celoss'](pre2,label)
+        loss=0.99*self.criterions['celoss'](pre1,label)+0.01*self.criterions['celoss'](pre2,label)
         
-        loss1.backward()
+        loss.backward()
         self.optimizers['backbone'].step()
         self.optimizers['APCHead'].step()
         self.optimizers['FCNHead'].step()
@@ -185,10 +195,32 @@ class Trainer():
         # self.logger.info('x type {} dtype {}'.format(type(x),x.dtype))
         # self.logger.info('label type {} dtype {}'.format(type(label),label.dtype))
         # self.logger.info('label {}'.format(label))
-        record=None
+        self.LossTotal+=loss.numpy()
+        record='inter{} , loss:{}'.format(self.inter,self.LossTotal/self.train_display_step)
+        # record='loss:{}'.format(loss.numpy())
+        del loss,pre1,pre2,feature2,feature3,x,label
         return record
     def val(self):
-        pass
+        self.models['backbone'].eval()
+        self.models['APCHead'].eval()
+        self.models['FCNHead'].eval()
+        confusionMatrix=np.zeros((19,19))
+        for i,batch in enumerate(tqdm(self.dataloaders['val']())):
+            x,label=batch
+            x=paddle.to_tensor(x,dtype='float32')
+            # print(label.shape)
+            label=paddle.to_tensor(label,dtype='int64')
+            # print('label',label.shape)
+            feature3=self.models['backbone'](x)[1] #0,1,2,3
+            # print('feature.shape',feature.shape)
+            pre1=self.models['APCHead'](feature3)
+            pre1=F.interpolate(x=pre1, size=[512,1024])
+            prediction=paddle.argmax(pre1,axis=1).numpy()
+            # print(prediction.shape)
+            confusionMatrix+=self.getConfusionMatrix(prediction,label.numpy())
+        miou,ious=self.getMiou(confusionMatrix)
+        self.logger.info('inter {} , miou:{}'.format(self.inter,miou))
+        
     def save_checkpoint(self):
         state={}
         state['inter']=self.inter
@@ -244,9 +276,27 @@ class Trainer():
         self.optimizers['FCNHead'].set_state_dict(state['optimizers']['FCNHead'])
         
         self.logger.info('resume ckpt from {}'.format(load_path))
+    def getMiou(self,mat):
+        ious=[]
+        for i in range(19):
+            iou_i=mat[i][i]/(np.sum(mat[i],axis=0)+np.sum(mat[:,i],axis=0)-mat[i][i])
+            ious.append(iou_i)
+        
+        res=(np.mean(ious),ious)
+        return res
+
+    def getConfusionMatrix(self,prediction,target,ignore_labeel=255):
+        confusionMatrix=np.zeros((19,19),dtype=int)
+        prediction=prediction.reshape(-1)
+        target=target.reshape(-1)
+        for (p1,p2) in zip(target,prediction):
+            if p1!=255:
+                confusionMatrix[p1,p2]+=1
+        return confusionMatrix
+        # print(confusionMatrix.shape)
 if __name__=='__main__':
     # p=dict(a=1,b=2)
     # print(len(p))
     # print(len(p.items()))
-    trainer=Trainer(expName='apcnet-cityscapes',resume=1,resume_inter='latest',config=CONFIG)
+    trainer=Trainer(expName='apcnet-cityscapes-2',resume=0,resume_inter='latest',config=CONFIG)
     trainer.run()

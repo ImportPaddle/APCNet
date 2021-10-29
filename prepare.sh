@@ -1,5 +1,5 @@
 # 解压数据集中附带的官方处理代码
-unzip -nq -d ./ dataset/cityscapesscripts.zip 
+# unzip -nq -d ./ dataset/cityscapesscripts.zip 
 
 # # 解压数据集中的gtFine
 unzip -nq -d dataset/gtFine/ dataset/gtFine_train.zip

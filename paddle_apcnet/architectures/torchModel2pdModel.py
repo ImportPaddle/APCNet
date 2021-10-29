@@ -2,11 +2,13 @@ import torch,os
 import paddle
 import numpy as np
 from resnet_paddle import ResNetV1C
+from apcnet_paddle import APCHead
+from fcnhead_paddle import FCNHead
 def write_dict(state_dict,name):
     lines=[]
     for k,v in state_dict.items():
         if 'batches_tracked' in k:
-            print('---skip---')
+            print('---skip--batches_tracked-')
             continue
         line=str(k)+'\t'+str(v.cpu().detach().numpy().shape)+'\n'
         # line=str(v)+'\t'+str(v.cpu().detach().numpy().shape)+'\n'
@@ -72,6 +74,73 @@ def trans():
     
     paddle.save(paddle_dict, './pretrained/resnet101_v1c-e67eebb6.pdparams')
     # paddle_dict=paddle.load('./pretrained/resnet101_v1c-e67eebb6.pdparams')
+def see(path):
+    state=torch.load(path)
+    print(state.keys())
+    # print(state['meta'])
+    for k,v in state['meta'].items():
+        print(k,v)
+    
+    backbone={}
+    decode_head={}
+    auxiliary_head={}
+    all=len(state['state_dict'])
+    print('all:{}'.format(all))
+    for k,v in state['state_dict'].items():
+        if 'backbone' in k:
+            backbone[k]=v
+        elif 'decode_head' in k:
+            decode_head[k]=v
+        elif 'auxiliary_head' in k:
+            auxiliary_head[k]=v
+    print('backbone:{}, decode_head:{},auxiliary_head:{}'.format(len(backbone),len(decode_head),len(auxiliary_head)))
+
+def transEachDict(path):
+    res={}
+    
+    state=torch.load(path)
+    backbone_torch={}
+    decode_head_torch={}
+    auxiliary_head_torch={}
+    all=len(state['state_dict'])
+    print('all:{}'.format(all))
+    for k,v in state['state_dict'].items():
+        if 'backbone' in k:
+            backbone_torch[k]=v
+        elif 'decode_head' in k:
+            decode_head_torch[k]=v
+        elif 'auxiliary_head' in k:
+            auxiliary_head_torch[k]=v
+    
+    backbone=ResNetV1C()
+    write_dict(backbone.state_dict(),'./backbone_paddleParams.txt')
+    write_dict(backbone_torch,'./backbone_torchParams.txt')
+    paddle_dict=rename_state_dict(backbone.state_dict(),backbone_torch)
+    backbone.set_state_dict(paddle_dict)
+    print('load backbone success')
+    
+    
+    apchead=APCHead()
+    write_dict(apchead.state_dict(),'./apchead_paddleParams.txt')
+    write_dict(decode_head_torch,'./apchead_torchParams.txt')
+    paddle_dict=rename_state_dict(apchead.state_dict(),decode_head_torch)
+    # write_dict(decode_head_torch,'./apchead_rename.txt')
+    apchead.set_state_dict(paddle_dict)
+    print('load apchead success')
+    
+    fcnhead=FCNHead()
+    write_dict(fcnhead.state_dict(),'./fcnhead_paddleParams.txt')
+    write_dict(auxiliary_head_torch,'./fcnhead_torchParams.txt')
+    paddle_dict=rename_state_dict(fcnhead.state_dict(),auxiliary_head_torch)
+    # write_dict(decode_head_torch,'./apchead_rename.txt')
+    fcnhead.set_state_dict(paddle_dict)
+    print('load fcnhead success')
+    
+    res['models']={}
+    res['models']['backbone']=backbone.state_dict()
+    res['models']['APCHead']=apchead.state_dict()
+    res['models']['FCNHead']=fcnhead.state_dict()
+    paddle.save(res,'./pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.paparams')
 if __name__=='__main__':
     # model=ResNetV1C()
     
@@ -82,4 +151,8 @@ if __name__=='__main__':
     #     p_k,p_v=p
     #     t_k,t_v=t
     #     print('({},{}):({},{}))'.format(p_k,t_k,p_v,t_v))
-    trans()
+    path='./pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.pth'
+    
+    transEachDict(path)
+    # path='./pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.pth'
+    # see(path)
