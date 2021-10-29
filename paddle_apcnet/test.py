@@ -32,6 +32,7 @@ def getMiou(mat,labels_num=19):
         return res
         # miou=np.trace(mat)/(2*np.sum(mat)-np.trace(mat))
         # return miou,1
+
 def get_color(mat,class_num):
     colorMaps=dict(
         label0=[220,20,60],
@@ -147,10 +148,12 @@ def test():
     setdir('./tmp/cityscape/crfs')
     setdir('./tmp/cityscape/gt')
     for i,batch in enumerate(tqdm(valLoader())):
+            x,label=batch
+            
             models['backbone'].eval()
             models['APCHead'].eval()
             models['FCNHead'].eval()
-            x,label=batch
+           
             x=paddle.to_tensor(x,dtype='float32')
             # print(label.shape)
             label=paddle.to_tensor(label,dtype='int64')
@@ -159,8 +162,9 @@ def test():
             feature3=models['backbone'](x)[1] #0,1,2,3
             # print('feature.shape',feature.shape)
             pre1=models['APCHead'](feature3)
-            # pre2=models['FCNHead'](feature2)
-            pre1=F.interpolate(x=pre1, size=[512,1024],mode="bilinear")
+            pre2=models['FCNHead'](feature2)
+            pre1=1.0*pre1+0.4*pre2
+            pre1=F.interpolate(x=pre1, size=[512,1024],mode="bilinear",align_corners=True)
             # pre2=F.interpolate(x=pre2, size=[512,1024])
             prediction=paddle.argmax(pre1,axis=1).numpy()
             
@@ -187,7 +191,7 @@ def test():
             
             # print(x[0].shape)
            
-            save_flag=1
+            save_flag=0
             if save_flag:
                 sourceImg=x[0].transpose([1,2,0])
                 mean=[0.485, 0.456, 0.406]
@@ -205,6 +209,8 @@ def test():
                 img=Image.fromarray(color_label.astype('uint8'))
                 img.save('./tmp/cityscape/gt/{}.png'.format(i))
             
+            
+            del x,label,feature2,feature3,pre1,pre2
             # CRFs()     
     miou,ious=getMiou(confusionMatrix,19 if ignore_label else 20)
     print('miou:{}\n{}'.format(miou,ious))

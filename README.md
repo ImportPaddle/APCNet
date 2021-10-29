@@ -110,7 +110,11 @@ python test.py
 | Model               | mIou   |
 | ------------------- | ------ |
 | APCNet(torch)       | 79.08% |
-| APCNet(paddle)      | 78.95% |
+| APCNet(paddle)(bilinear)      | 74.93% |
+| APCNet(paddle)(BICUBIC)      | 73.14% |
+| APCNet(paddle)(AREA)      | 72.22% |
+| APCNet(paddle)(bilinear)(APCHead+FCNHead)| 73.21% |
+| APCNet(paddle)(bilinear)(1.0APCHead+0.4FCNHead)| 73.49% |
 | APCNet+CRFs(paddle) | 72.47% |
 
 

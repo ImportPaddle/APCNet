@@ -66,6 +66,13 @@ class CityScapesDataset(Dataset):
                                   std=[0.229, 0.224, 0.225],
                                 #   data_format='HWC'
                                   ))
+        # elif mode=='val':
+        #     transforms.append(Resize((1024,512),interp='LINEAR'))
+        #     transforms.append(Normalize(mean=[0.485, 0.456, 0.406], 
+        #                           std=[0.229, 0.224, 0.225],
+        #                         #   data_format='HWC'
+        #                           ))
+        
         elif mode=='test':
             transforms.append(Normalize(mean=[0.485, 0.456, 0.406], 
                                   std=[0.229, 0.224, 0.225],

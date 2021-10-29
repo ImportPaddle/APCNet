@@ -17,8 +17,9 @@ warnings.filterwarnings('ignore')
 class Trainer():
     def __init__(self,expName,resume=True,resume_inter='latest',config=None):
         super(Trainer,self).__init__()
-        self.max_inter=650000
+        self.max_inter=500000
         self.inter=0
+        self.optimizers_step_size=int(self.max_inter/100)
         self.config=CONFIG
         self.root=os.getcwd()
         self.resume=resume
@@ -34,8 +35,8 @@ class Trainer():
         self.stepEachEpoch=(len(self.dataloaders['train'])+1)
         self.train_display_step=50
         self.train_save_step=2000
-        self.val_step=4000
-        self.optimizers_step_size=int(self.max_inter/250)
+        self.val_step=500
+        
         self.logger.info('init complete')
     def run(self):
         ##resume
@@ -94,6 +95,12 @@ class Trainer():
         return logger
     def init_models(self):
         networks,msg_resnet=getApcNet()
+        pre_apcent=0
+        if pre_apcent:
+            state=paddle.load('./architectures/pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.paparams')
+            networks['backbone'].set_state_dict(state['models']['backbone'])
+            networks['APCHead'].set_state_dict(state['models']['APCHead'])
+            networks['FCNHead'].set_state_dict(state['models']['FCNHead'])
         self.logger.info(msg_resnet)
         return networks ##['backbone','APCHead','FCNHead']
         pass
@@ -123,6 +130,8 @@ class Trainer():
         optimizers={}
         self.scheduler={}
         backboneCfg=self.config['optimizers']['backbone']
+        
+        
         optimizers['backbone']= paddle.optimizer.Momentum(
                                     parameters=self.models['backbone'].parameters(),
                                     learning_rate=backboneCfg['lr'],
@@ -132,7 +141,7 @@ class Trainer():
         apcnetCfg=self.config['optimizers']['APCHead']
         
         # step_size=5
-        self.scheduler['APCHead'] = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=self.optimizers_step_size, gamma=0.98, verbose=False)
+        self.scheduler['APCHead'] = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=self.optimizers_step_size, gamma=0.9, verbose=False)
         optimizers['APCHead']= paddle.optimizer.Momentum(
                                     parameters=self.models['APCHead'].parameters(),
                                     learning_rate=self.scheduler['APCHead'],
@@ -140,7 +149,7 @@ class Trainer():
                                     weight_decay=apcnetCfg['weight_decay'])
         
         fcnheadCfg=self.config['optimizers']['FCNHead']
-        self.scheduler['FCNHead'] = paddle.optimizer.lr.StepDecay(learning_rate=fcnheadCfg['lr'], step_size=self.optimizers_step_size, gamma=0.98, verbose=False)
+        self.scheduler['FCNHead'] = paddle.optimizer.lr.StepDecay(learning_rate=fcnheadCfg['lr'], step_size=self.optimizers_step_size, gamma=0.9, verbose=False)
         optimizers['FCNHead']= paddle.optimizer.Momentum(
                                     parameters=self.models['FCNHead'].parameters(),
                                     learning_rate=self.scheduler['FCNHead'],
@@ -172,8 +181,8 @@ class Trainer():
         # print('feature.shape',feature.shape)
         pre1=self.models['APCHead'](feature3)
         pre2=self.models['FCNHead'](feature2)
-        pre1=F.interpolate(x=pre1, size=[512,1024])
-        pre2=F.interpolate(x=pre1, size=[512,1024])
+        pre1=F.interpolate(x=pre1, size=[512,1024],mode="bilinear")
+        pre2=F.interpolate(x=pre1, size=[512,1024],mode="bilinear")
         # print('pre1.shape',pre1.shape)
         # print('pre2.shape',pre2.shape)
         """
@@ -204,22 +213,35 @@ class Trainer():
         self.models['backbone'].eval()
         self.models['APCHead'].eval()
         self.models['FCNHead'].eval()
-        confusionMatrix=np.zeros((19,19))
-        for i,batch in enumerate(tqdm(self.dataloaders['val']())):
+        ignore_label255=0
+        if not ignore_label255:
+            confusionMatrix=np.zeros((20,20))
+        else:
+            confusionMatrix=np.zeros((19,19))
+        for i,batch in enumerate(tqdm(self.dataloaders['val'])):
             x,label=batch
             x=paddle.to_tensor(x,dtype='float32')
             # print(label.shape)
             label=paddle.to_tensor(label,dtype='int64')
             # print('label',label.shape)
+            feature2=self.models['backbone'](x)[0]
             feature3=self.models['backbone'](x)[1] #0,1,2,3
             # print('feature.shape',feature.shape)
             pre1=self.models['APCHead'](feature3)
-            pre1=F.interpolate(x=pre1, size=[512,1024])
+            pre2=self.models['FCNHead'](feature2)
+            pre1=1.0*pre1+0.4*pre2
+            pre1=F.interpolate(x=pre1, size=[512,1024],mode="bilinear") #,align_corners=True
+            # pre2=F.interpolate(x=pre2, size=[512,1024])
             prediction=paddle.argmax(pre1,axis=1).numpy()
-            # print(prediction.shape)
-            confusionMatrix+=self.getConfusionMatrix(prediction,label.numpy())
-        miou,ious=self.getMiou(confusionMatrix)
-        self.logger.info('inter {} , miou:{}'.format(self.inter,miou))
+            
+            if not ignore_label255:
+                prediction[np.where(label.numpy()==255)]=255
+            else:
+                pass
+            confusionMatrix+=self.getConfusionMatrix(prediction,label.numpy(),ignore_label255)
+            del x,label,feature2,feature3,pre1,pre2,prediction
+        miou,ious=self.getMiou(confusionMatrix,19 if ignore_label255 else 20)
+        self.logger.info('inter {} ,val miou:{}'.format(self.inter,miou))
         
     def save_checkpoint(self):
         state={}
@@ -276,27 +298,41 @@ class Trainer():
         self.optimizers['FCNHead'].set_state_dict(state['optimizers']['FCNHead'])
         
         self.logger.info('resume ckpt from {}'.format(load_path))
-    def getMiou(self,mat):
+    def getMiou(self,mat,labels_num=19):
         ious=[]
-        for i in range(19):
+        for i in range(labels_num):
             iou_i=mat[i][i]/(np.sum(mat[i],axis=0)+np.sum(mat[:,i],axis=0)-mat[i][i])
             ious.append(iou_i)
         
         res=(np.mean(ious),ious)
         return res
+        # miou=np.trace(mat)/(2*np.sum(mat)-np.trace(mat))
+        # return miou,1
 
-    def getConfusionMatrix(self,prediction,target,ignore_labeel=255):
-        confusionMatrix=np.zeros((19,19),dtype=int)
-        prediction=prediction.reshape(-1)
-        target=target.reshape(-1)
-        for (p1,p2) in zip(target,prediction):
-            if p1!=255:
-                confusionMatrix[p1,p2]+=1
-        return confusionMatrix
+    def getConfusionMatrix(self,prediction,target,ignore_label=255):
+        if ignore_label:
+            confusionMatrix=np.zeros((19,19),dtype=int)
+            prediction=prediction.reshape(-1)
+            target=target.reshape(-1)
+            for (p1,p2) in zip(target,prediction):
+                if p1!=ignore_label:
+                    confusionMatrix[p1,p2]+=1
+            return confusionMatrix
+        else:
+            confusionMatrix=np.zeros((20,20),dtype=int)
+            prediction=prediction.reshape(-1)
+            target=target.reshape(-1)
+            for (p1,p2) in zip(target,prediction):
+                if p1!=255:
+                    confusionMatrix[p1,p2]+=1
+                elif p1==255:
+                    confusionMatrix[19,19]+=1
+            return confusionMatrix
+ 
         # print(confusionMatrix.shape)
 if __name__=='__main__':
     # p=dict(a=1,b=2)
     # print(len(p))
     # print(len(p.items()))
-    trainer=Trainer(expName='apcnet-cityscapes-2',resume=0,resume_inter='latest',config=CONFIG)
+    trainer=Trainer(expName='apcnet-cityscapes-test',resume=0,resume_inter='latest',config=CONFIG)
     trainer.run()

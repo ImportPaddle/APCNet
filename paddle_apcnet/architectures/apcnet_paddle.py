@@ -213,6 +213,7 @@ class APCHead(nn.Layer):
         if self.dropout is not None:
             feat = self.dropout(feat)
         output = self.conv_seg(feat)
+        
         return output
     
 if __name__=='__main__':
