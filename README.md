@@ -5,7 +5,7 @@ Cityscapes 79.08%
 | Model          | Miou   |
 | -------------- | ------ |
 | APCNet(torch)  | 79.08% |
-| APCNet(paddle) |        |
+| APCNet(paddle) | 71.29% |
 
 
 
