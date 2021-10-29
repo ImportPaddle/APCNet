@@ -106,7 +106,7 @@ python test.py
 | Model               | mIou   |
 | ------------------- | ------ |
 | APCNet(torch)       | 79.08% |
-| APCNet(paddle)      | 72.25% |
+| APCNet(paddle)      | 78.95% |
 | APCNet+CRFs(paddle) |        |
 
 
