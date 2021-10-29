@@ -19,7 +19,6 @@ import numpy as np
 from tqdm import tqdm
 from  config import *
 class CityScapesDataset(Dataset):
-    
     def __init__(self,root,Img_size=(1024,2048,3),Buffer_size=500,mode='train',SEED=1):
         random.seed(SEED)
         super(CityScapesDataset, self).__init__()

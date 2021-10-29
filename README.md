@@ -1,19 +1,20 @@
 # Adaptive Pyramid Context Network for Semantic Segmentation
 
-Cityscapes 79.08%
-
-| Model          | Miou   |
-| -------------- | ------ |
-| APCNet(torch)  | 79.08% |
-| APCNet(paddle) | 71.29% |
 
 
+| **ackbone**        | **Resnet101_v1c** |
+| ------------------ | ----------------- |
+| **Decode Head**    | **APCHead**       |
+| **Auxiliary Head** | **FCNHead**       |
 
-Backbone: Resnet101_v1c
+<img src="img/2.png" alt="source" style="zoom:50%;" />
 
-Decode Head: APCHead 
+<img src="img/2-gt.png" alt="ground Truth" style="zoom:50%;" />
 
-Auxiliary Head: FCNHead
+<img src="img/2-pre.png" alt="ground Truth" style="zoom:50%;" />
+
+
+
 
 ## Environment
 
@@ -37,6 +38,16 @@ python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
 ```yml
 #mmcv resnet101_v1c  mmcv/model_zoo/open_mmlab.json:
 "resnet101_v1c": "https://download.openmmlab.com/pretrain/third_party/resnet101_v1c-e67eebb6.pth"
+```
+
+
+
+## Weight tranpose：
+
+```shell
+cd paddle_apcnet/architectures
+cp apcnetxxx_torch.pth paddle_apcnet/architectures/pretrained/apcnetxxx_torch.pth
+python torchModel2pdModel.py #generate apcnetxxx_paddle.pdparams
 ```
 
 
@@ -74,4 +85,29 @@ Torch:
 cd torch_apcnet
 sh torch.sh
 ```
+
+
+
+## Test:
+
+Paddle:
+
+```shell
+cd paddle_apcnet
+python test.py
+```
+
+
+
+
+
+## Measure：
+
+| Model               | mIou   |
+| ------------------- | ------ |
+| APCNet(torch)       | 79.08% |
+| APCNet(paddle)      | 72.25% |
+| APCNet+CRFs(paddle) |        |
+
+
 

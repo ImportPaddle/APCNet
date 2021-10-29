@@ -17,6 +17,11 @@ import pydensecrf.densecrf as dcrf
 from pydensecrf.utils import unary_from_labels, create_pairwise_bilateral, create_pairwise_gaussian
 from cv2 import imread, imwrite
 from PIL import Image
+import shutil
+def setdir(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.makedirs(path)
 def getMiou(mat):
         ious=[]
         for i in range(19):
@@ -25,97 +30,81 @@ def getMiou(mat):
         
         res=(np.mean(ious),ious)
         return res
-def CRFs(original_image_path, predicted_image_path, CRF_image_path):
+        # miou=np.trace(mat)/(2*np.sum(mat)-np.trace(mat))
+        # return miou,1
+def get_color(mat,class_num):
+    colorMaps=dict(
+        label0=[220,20,60],
+        label1=[139,0,139],
+        label2=[106,90,205],
+        label3=[0,0,205],
+        label4=[65,105,225],
+        label5=[135,206,250],
+        label6=[225,255,255],
+        label7=[0,128,128],
+        label8=[127,255,170],
+        label9=[46,139,87],
+        label10=[50,205,50],
+        label11=[0,100,0],
+        label12=[255,255,0],
+        label13=[255,215,0],
+        label14=[255,165,0],
+        label15=[160,82,45],
+        label16=[255,69,0],
+        label17=[250,128,114],
+        label18=[255,0,0],
+        label255=[255,255,255]
+    )
+    res=np.zeros((512,1024,3),dtype='uint8')
+    for i in range(class_num):
+        r=[2*i,5*i,10*i]
+        res[np.where(mat==i)]=colorMaps[str('label{}'.format(i))]
+    res[np.where(mat==255)]=colorMaps['label255']
+    return res
 
-    img = imread(original_image_path)
-
-    # 将predicted_image的RGB颜色转换为uint32颜色 0xbbggrr
-    anno_rgb = imread(predicted_image_path).astype(np.uint32)
-    anno_lbl = anno_rgb[:, :, 0] + (anno_rgb[:, :, 1] << 8) + (anno_rgb[:, :, 2] << 16)
-
-    # 将uint32颜色转换为1,2,...
-    colors, labels = np.unique(anno_lbl, return_inverse=True)
-
-    # 如果你的predicted_image里的黑色（0值）不是待分类类别，表示不确定区域，即将分为其他类别
-    # 那么就取消注释以下代码
-    # HAS_UNK = 0 in colors
-    # if HAS_UNK:
-    # colors = colors[1:]
-
-    # 创建从predicted_image到32位整数颜色的映射。
-    colorize = np.empty((len(colors), 3), np.uint8)
-    colorize[:, 0] = (colors & 0x0000FF)
-    colorize[:, 1] = (colors & 0x00FF00) >> 8
-    colorize[:, 2] = (colors & 0xFF0000) >> 16
+def CRFs(img,prediction, save_path):
 
     # 计算predicted_image中的类数。
-    n_labels = len(set(labels.flat))
-    # n_labels = len(set(labels.flat)) - int(HAS_UNK) ##如果有不确定区域，用这一行代码替换上一行
-
-    ###########################
-    ###     设置CRF模型     ###
-    ###########################
-    use_2d = False
-    # use_2d = True
-    ###########################################################
-    ##不是很清楚什么情况用2D
-    ##作者说“对于图像，使用此库的最简单方法是使用DenseCRF2D类”
-    ##作者还说“DenseCRF类可用于通用（非二维）密集CRF”
-    ##但是根据我的测试结果一般情况用DenseCRF比较对
-    #########################################################33
+    n_labels = 19
+    
+    use_2d = True
+   
     if use_2d:
         # 使用densecrf2d类
-        d = dcrf.DenseCRF2D(img.shape[1], img.shape[0], n_labels)
+        # print(img.shape)
+        d = dcrf.DenseCRF2D(img.shape[1],img.shape[0], n_labels)
 
         # 得到一元势（负对数概率）
-        U = unary_from_labels(labels, n_labels, gt_prob=0.2, zero_unsure=None)
-        # U = unary_from_labels(labels, n_labels, gt_prob=0.2, zero_unsure=HAS_UNK)## 如果有不确定区域，用这一行代码替换上一行
+        U = unary_from_labels(prediction, n_labels, gt_prob=0.2, zero_unsure=None)
+        img = np.ascontiguousarray(img)
+        
         d.setUnaryEnergy(U)
 
         # 增加了与颜色无关的术语，功能只是位置而已
         d.addPairwiseGaussian(sxy=(3, 3), compat=3, kernel=dcrf.DIAG_KERNEL,
                               normalization=dcrf.NORMALIZE_SYMMETRIC)
-
-        # 增加了颜色相关术语，即特征是(x,y,r,g,b)
-        d.addPairwiseBilateral(sxy=(80, 80), srgb=(13, 13, 13), rgbim=img, compat=10,
+        
+        d.addPairwiseBilateral(sxy=(80, 80), srgb=(13, 13, 13), rgbim=img,compat=10,
                                kernel=dcrf.DIAG_KERNEL,
                                normalization=dcrf.NORMALIZE_SYMMETRIC)
-    else:
-        # 使用densecrf类
-        d = dcrf.DenseCRF(img.shape[1] * img.shape[0], n_labels)
-
-        # 得到一元势（负对数概率）
-        U = unary_from_labels(labels, n_labels, gt_prob=0.7, zero_unsure=None)
-        # U = unary_from_labels(labels, n_labels, gt_prob=0.7, zero_unsure=HAS_UNK)## 如果有不确定区域，用这一行代码替换上一行
-        d.setUnaryEnergy(U)
-
-        # 这将创建与颜色无关的功能，然后将它们添加到CRF中
-        feats = create_pairwise_gaussian(sdims=(3, 3), shape=img.shape[:2])
-        d.addPairwiseEnergy(feats, compat=3, kernel=dcrf.DIAG_KERNEL,
-                            normalization=dcrf.NORMALIZE_SYMMETRIC)
-
-        # 这将创建与颜色相关的功能，然后将它们添加到CRF中
-        feats = create_pairwise_bilateral(sdims=(80, 80), schan=(13, 13, 13),
-                                          img=img, chdim=2)
-        d.addPairwiseEnergy(feats, compat=10,
-                            kernel=dcrf.DIAG_KERNEL,
-                            normalization=dcrf.NORMALIZE_SYMMETRIC)
-
+      
     ####################################
     ###         做推理和计算         ###
     ####################################
 
     # 进行5次推理
-    Q = d.inference(5)
+    Q = d.inference(10)
 
     # 找出每个像素最可能的类
+    # print(np.array(Q).shape)
     MAP = np.argmax(Q, axis=0)
-
-    # 将predicted_image转换回相应的颜色并保存图像
-    MAP = colorize[MAP, :]
-    imwrite(CRF_image_path, MAP.reshape(img.shape))
-    print("CRF图像保存在", CRF_image_path, "!")
-
+    print(MAP.shape)
+    prediction=MAP.reshape((512,1024))
+    
+    map=get_color(prediction,class_num=19)
+    img=Image.fromarray(map)
+    img.save(save_path)
+    return prediction[np.newaxis,:,:]
 def getConfusionMatrix(prediction,target,ignore_labeel=255):
     confusionMatrix=np.zeros((19,19),dtype=int)
     prediction=prediction.reshape(-1)
@@ -133,11 +122,16 @@ def test():
     models['APCHead'].set_state_dict(state['models']['APCHead'])
     models['FCNHead'].set_state_dict(state['models']['FCNHead'])
     
-    models['backbone'].eval()
-    models['APCHead'].eval()
-    models['FCNHead'].eval()
+    
     confusionMatrix=np.zeros((19,19))
+    setdir('./tmp/cityscape/source')
+    setdir('./tmp/cityscape/pre')
+    setdir('./tmp/cityscape/crfs')
+    setdir('./tmp/cityscape/gt')
     for i,batch in enumerate(tqdm(valLoader())):
+            models['backbone'].eval()
+            models['APCHead'].eval()
+            models['FCNHead'].eval()
             x,label=batch
             x=paddle.to_tensor(x,dtype='float32')
             # print(label.shape)
@@ -150,20 +144,61 @@ def test():
             # pre2=models['FCNHead'](feature2)
             pre1=F.interpolate(x=pre1, size=[512,1024])
             # pre2=F.interpolate(x=pre2, size=[512,1024])
-            
             prediction=paddle.argmax(pre1,axis=1).numpy()
+            
+            
+            
+            # sourceImg=x[0].transpose([1,2,0])
+            # mean=[0.485, 0.456, 0.406]
+            # std=[0.229, 0.224, 0.225]
+            # sourceImg=np.array([(sourceImg[:,:,i]*std[i]+mean[i])*255.0 for i in range(3)],dtype='uint8')
+            # sourceImg=sourceImg.transpose([1,2,0])
+            # path='./tmp/crfs/crfs/{}.png'.format(i)
+            # map=CRFs(sourceImg,prediction[0],path)
+            
+            # print('map', map.shape)
+            # print('prediction.shape',prediction.shape)
             # prediction=paddle.argmax(pre2,axis=1).numpy()
             confusionMatrix+=getConfusionMatrix(prediction,label.numpy())
-            print(prediction[0].shape)
-            img=Image.fromarray(prediction[0].astype('uint8'))
+            # confusionMatrix+=getConfusionMatrix(map,label.numpy())
+            # print(prediction[0].shape)
             
-            img.save('./tmp/crfs/pre/{}.png'.format(i))
+            
+            
+            # print(x[0].shape)
+           
+            save_flag=1
+            if save_flag:
+                sourceImg=x[0].transpose([1,2,0])
+                mean=[0.485, 0.456, 0.406]
+                std=[0.229, 0.224, 0.225]
+                sourceImg=np.array([(sourceImg[:,:,i]*std[i]+mean[i])*255.0 for i in range(3)],dtype='uint8')
+                sourceImg=sourceImg.transpose([1,2,0])
+                img=Image.fromarray(sourceImg)
+                img.save('./tmp/cityscape/source/{}.png'.format(i))
+                
+                color_pre=get_color(prediction[0],19)
+                img=Image.fromarray(color_pre.astype('uint8'))
+                img.save('./tmp/cityscape/pre/{}.png'.format(i))
+                
+                color_label=get_color(label[0],19)
+                img=Image.fromarray(color_label.astype('uint8'))
+                img.save('./tmp/cityscape/gt/{}.png'.format(i))
             
             # CRFs()
             
     miou,ious=getMiou(confusionMatrix)
     print('miou:{}\n{}'.format(miou,ious))
 
+def testCRFs():
+    labels=np.random.ranint(0,19,(512,1024))
+    d = dcrf.DenseCRF2D(512, 1024, 19)
+    U = unary_from_labels(labels, 19, gt_prob=0.2, zero_unsure=None)
+    d.setUnaryEnergy(U)
+    feats = create_pairwise_gaussian(sdims=(3, 3), shape=img.shape[:2])
+    d.addPairwiseEnergy(feats, compat=3,
+                        kernel=dcrf.DIAG_KERNEL,
+                        normalization=dcrf.NORMALIZE_SYMMETRIC)
 def main():
     test()
 if __name__=='__main__':

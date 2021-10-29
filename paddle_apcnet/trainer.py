@@ -180,7 +180,7 @@ class Trainer():
         pre2.shape [1, 19, 64, 128]
         """
         # print(label.dtype)
-        loss=0.99*self.criterions['celoss'](pre1,label)+0.01*self.criterions['celoss'](pre2,label)
+        loss=1.0*self.criterions['celoss'](pre1,label)+0.4*self.criterions['celoss'](pre2,label)
         
         loss.backward()
         self.optimizers['backbone'].step()
