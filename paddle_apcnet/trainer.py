@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 class Trainer():
     def __init__(self,expName,resume=True,resume_inter='latest',config=None):
         super(Trainer,self).__init__()
-        self.max_inter=65000
+        self.max_inter=650000
         self.inter=0
         self.config=CONFIG
         self.root=os.getcwd()
@@ -35,6 +35,7 @@ class Trainer():
         self.train_display_step=50
         self.train_save_step=2000
         self.val_step=4000
+        self.optimizers_step_size=int(self.max_inter/250)
         self.logger.info('init complete')
     def run(self):
         ##resume
@@ -118,7 +119,7 @@ class Trainer():
         dataloaders['test']=testLoader
         return dataloaders
     def init_optimizers(self):
-        self.optimizers_step_size=int(self.max_inter/250)
+        
         optimizers={}
         self.scheduler={}
         backboneCfg=self.config['optimizers']['backbone']
@@ -131,7 +132,7 @@ class Trainer():
         apcnetCfg=self.config['optimizers']['APCHead']
         
         # step_size=5
-        self.scheduler['APCHead'] = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=1, gamma=0.99, verbose=False)
+        self.scheduler['APCHead'] = paddle.optimizer.lr.StepDecay(learning_rate=apcnetCfg['lr'], step_size=self.optimizers_step_size, gamma=0.98, verbose=False)
         optimizers['APCHead']= paddle.optimizer.Momentum(
                                     parameters=self.models['APCHead'].parameters(),
                                     learning_rate=self.scheduler['APCHead'],
@@ -139,7 +140,7 @@ class Trainer():
                                     weight_decay=apcnetCfg['weight_decay'])
         
         fcnheadCfg=self.config['optimizers']['FCNHead']
-        self.scheduler['FCNHead'] = paddle.optimizer.lr.StepDecay(learning_rate=fcnheadCfg['lr'], step_size=1, gamma=0.98, verbose=False)
+        self.scheduler['FCNHead'] = paddle.optimizer.lr.StepDecay(learning_rate=fcnheadCfg['lr'], step_size=self.optimizers_step_size, gamma=0.98, verbose=False)
         optimizers['FCNHead']= paddle.optimizer.Momentum(
                                     parameters=self.models['FCNHead'].parameters(),
                                     learning_rate=self.scheduler['FCNHead'],
@@ -187,11 +188,10 @@ class Trainer():
         self.optimizers['APCHead'].step()
         self.optimizers['FCNHead'].step()
         
-        
-        if batch_id%self.optimizers_step_size==0:
-            self.scheduler['APCHead'].step()
-            self.scheduler['FCNHead'].step()
-            self.logger.info('adjust APCHead lr to {},FCNHead lr to {}'.format(self.scheduler['APCHead'].last_lr,self.scheduler['FCNHead'].last_lr))
+        self.scheduler['APCHead'].step()
+        self.scheduler['FCNHead'].step()
+        # if batch_id%self.optimizers_step_size==0:
+        #     self.logger.info('adjust APCHead lr to {},FCNHead lr to {}'.format(self.scheduler['APCHead'].last_lr,self.scheduler['FCNHead'].last_lr))
         # self.logger.info('x type {} dtype {}'.format(type(x),x.dtype))
         # self.logger.info('label type {} dtype {}'.format(type(label),label.dtype))
         # self.logger.info('label {}'.format(label))

@@ -22,9 +22,9 @@ def setdir(path):
     if os.path.exists(path):
         shutil.rmtree(path)
     os.makedirs(path)
-def getMiou(mat):
+def getMiou(mat,labels_num=19):
         ious=[]
-        for i in range(19):
+        for i in range(labels_num):
             iou_i=mat[i][i]/(np.sum(mat[i],axis=0)+np.sum(mat[:,i],axis=0)-mat[i][i])
             ious.append(iou_i)
         
@@ -105,14 +105,27 @@ def CRFs(img,prediction, save_path):
     img=Image.fromarray(map)
     img.save(save_path)
     return prediction[np.newaxis,:,:]
-def getConfusionMatrix(prediction,target,ignore_labeel=255):
-    confusionMatrix=np.zeros((19,19),dtype=int)
-    prediction=prediction.reshape(-1)
-    target=target.reshape(-1)
-    for (p1,p2) in zip(target,prediction):
-        if p1!=255:
-            confusionMatrix[p1,p2]+=1
-    return confusionMatrix
+def getConfusionMatrix(prediction,target,ignore_label=255):
+    if ignore_label:
+        confusionMatrix=np.zeros((19,19),dtype=int)
+        prediction=prediction.reshape(-1)
+        target=target.reshape(-1)
+        for (p1,p2) in zip(target,prediction):
+            if p1!=ignore_label:
+                confusionMatrix[p1,p2]+=1
+        return confusionMatrix
+    else:
+        confusionMatrix=np.zeros((20,20),dtype=int)
+        prediction=prediction.reshape(-1)
+        target=target.reshape(-1)
+        for (p1,p2) in zip(target,prediction):
+            if p1!=255:
+                confusionMatrix[p1,p2]+=1
+            elif p1==255:
+                confusionMatrix[19,19]+=1
+        return confusionMatrix
+        
+
 def test():
     valDataset=CityScapesDataset(root='../dataset/cityscapes',mode='val',SEED=1)
     valLoader=DataLoader(valDataset,batch_size=1,drop_last=False,num_workers=4, shuffle=False,use_buffer_reader=True)
@@ -123,7 +136,12 @@ def test():
     models['FCNHead'].set_state_dict(state['models']['FCNHead'])
     
     
-    confusionMatrix=np.zeros((19,19))
+    ignore_label=None
+    # ignore_label=255
+    if ignore_label:
+        confusionMatrix=np.zeros((19,19))
+    else:
+        confusionMatrix=np.zeros((20,20))
     setdir('./tmp/cityscape/source')
     setdir('./tmp/cityscape/pre')
     setdir('./tmp/cityscape/crfs')
@@ -142,12 +160,14 @@ def test():
             # print('feature.shape',feature.shape)
             pre1=models['APCHead'](feature3)
             # pre2=models['FCNHead'](feature2)
-            pre1=F.interpolate(x=pre1, size=[512,1024])
+            pre1=F.interpolate(x=pre1, size=[512,1024],mode="bilinear")
             # pre2=F.interpolate(x=pre2, size=[512,1024])
             prediction=paddle.argmax(pre1,axis=1).numpy()
             
-            
-            
+            if not ignore_label:
+                prediction[np.where(label.numpy()==255)]=255
+            else:
+                pass
             # sourceImg=x[0].transpose([1,2,0])
             # mean=[0.485, 0.456, 0.406]
             # std=[0.229, 0.224, 0.225]
@@ -159,7 +179,7 @@ def test():
             # print('map', map.shape)
             # print('prediction.shape',prediction.shape)
             # prediction=paddle.argmax(pre2,axis=1).numpy()
-            confusionMatrix+=getConfusionMatrix(prediction,label.numpy())
+            confusionMatrix+=getConfusionMatrix(prediction,label.numpy(),ignore_label)
             # confusionMatrix+=getConfusionMatrix(map,label.numpy())
             # print(prediction[0].shape)
             
@@ -185,9 +205,8 @@ def test():
                 img=Image.fromarray(color_label.astype('uint8'))
                 img.save('./tmp/cityscape/gt/{}.png'.format(i))
             
-            # CRFs()
-            
-    miou,ious=getMiou(confusionMatrix)
+            # CRFs()     
+    miou,ious=getMiou(confusionMatrix,19 if ignore_label else 20)
     print('miou:{}\n{}'.format(miou,ious))
 
 def testCRFs():

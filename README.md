@@ -7,13 +7,17 @@
 | **Decode Head**    | **APCHead**       |
 | **Auxiliary Head** | **FCNHead**       |
 
+<img src="img/1.png" alt="source" style="zoom:50%;" />
+
+<img src="img/1-gt.png" alt="ground Truth" style="zoom:50%;" />
+
+<img src="img/1-pre.png" alt="ground Truth" style="zoom:50%;" />
+
 <img src="img/2.png" alt="source" style="zoom:50%;" />
 
 <img src="img/2-gt.png" alt="ground Truth" style="zoom:50%;" />
 
 <img src="img/2-pre.png" alt="ground Truth" style="zoom:50%;" />
-
-
 
 
 ## Environment
@@ -107,7 +111,7 @@ python test.py
 | ------------------- | ------ |
 | APCNet(torch)       | 79.08% |
 | APCNet(paddle)      | 78.95% |
-| APCNet+CRFs(paddle) |        |
+| APCNet+CRFs(paddle) | 72.47% |
 
 
 
