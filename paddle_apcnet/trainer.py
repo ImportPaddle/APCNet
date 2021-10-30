@@ -37,7 +37,7 @@ class Trainer():
         self.stepEachEpoch = (len(self.dataloaders['train']) + 1)
         self.train_display_step = 50
         self.train_save_step = 2000
-        self.val_step = 1
+        self.val_step = 40000
 
         self.logger.info('init complete')
 
