@@ -242,7 +242,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
             input=seg_logit,
             size=seg_label.shape[2:],
             mode='bilinear',
-            align_corners=self.align_corners)
+            align_corners=self.align_corners) #false
         if self.sampler is not None:
             seg_weight = self.sampler.sample(seg_logit, seg_label)
         else:
