@@ -25,7 +25,8 @@ class Trainer():
         self.root = os.getcwd()
         self.resume = resume
         self.resume_inter = resume_inter
-
+        self.best_miou = -1.0
+        self.best_miou_inter=-100
         self.exp_dir = self.init_exp_dir(expName=expName)
         self.logger = self.init_logger()
         self.models = self.init_models()
@@ -73,7 +74,11 @@ class Trainer():
                     self.delete_checkpoint()
 
                 if self.inter % self.val_step == 0:
-                    self.val()
+                    miou,ious=self.val()
+                    if miou>self.best_miou:
+                        self.best_miou=miou
+                        self.best_miou_inter=self.inter
+                        self.save_checkpoint(postfix='best')
                 self.inter += 1
 
     def resume_experiment(self):
@@ -321,10 +326,13 @@ class Trainer():
             del x, label, feature2, feature3, pre1, pre2, prediction
         miou, ious = self.getMiou(confusionMatrix, 19 if ignore_label255 else 20)
         self.logger.info('inter {} ,val miou:{}'.format(self.inter, miou))
-
-    def save_checkpoint(self):
+        return miou,ious
+    def save_checkpoint(self,postfix='normal'):
         state = {}
         state['inter'] = self.inter
+        state['best'] = {}
+        state['best']['best_miou']=self.best_miou
+        state['best']['best_miou_inter'] = self.best_miou_inter
         state['models'] = {}
         state['models']['backbone'] = self.models['backbone'].state_dict()
         state['models']['APCHead'] = self.models['APCHead'].state_dict()
@@ -333,10 +341,14 @@ class Trainer():
         state['optimizers']['APCHead'] = self.optimizers['APCHead'].state_dict()
         state['optimizers']['FCNHead'] = self.optimizers['FCNHead'].state_dict()
 
-        save_path = os.path.join(self.exp_dir, 'ckpt', str(self.inter) + '.pdparams')
-
-        paddle.save(state, save_path)
-        self.logger.info('save ckpt inter:{}'.format(self.inter))
+        if postfix=='best':
+            save_path = os.path.join(self.exp_dir, 'ckpt', str(self.inter) + '.pdparams.bestmIou_{}'.format(self.best_miou))
+            paddle.save(state, save_path)
+            self.logger.info('save best ckpt inter:{}, mIou : {}'.format(self.inter,self.best_miou))
+        else:
+            save_path = os.path.join(self.exp_dir, 'ckpt', str(self.inter) + '.pdparams')
+            paddle.save(state, save_path)
+            self.logger.info('save ckpt inter:{}'.format(self.inter))
 
     def delete_checkpoint(self):
         ckpts = list(glob.glob(self.exp_dir + '/ckpt/*.pdparams'))
@@ -376,12 +388,13 @@ class Trainer():
             load_path = os.path.join(self.exp_dir, 'ckpt', str(latest) + '.pdparams')
             state = paddle.load(load_path)
         self.inter = state['inter'] + 1
+        self.best_miou=state['best']['best_miou']
+        self.best_miou_inter=state['best']['best_miou_inter']
         self.models['backbone'].set_state_dict(state['models']['backbone'])
         self.models['APCHead'].set_state_dict(state['models']['APCHead'])
         self.models['FCNHead'].set_state_dict(state['models']['FCNHead'])
         self.optimizers['APCHead'].set_state_dict(state['optimizers']['APCHead'])
         self.optimizers['FCNHead'].set_state_dict(state['optimizers']['FCNHead'])
-
         self.logger.info('resume ckpt from {}'.format(load_path))
 
     def getMiou(self, mat, labels_num=19):
