@@ -140,7 +140,7 @@ def transEachDict(path):
     res['models']['backbone']=backbone.state_dict()
     res['models']['APCHead']=apchead.state_dict()
     res['models']['FCNHead']=fcnhead.state_dict()
-    paddle.save(res,'./pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.paparams')
+    paddle.save(res,'./pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.pdparams')
 if __name__=='__main__':
     # model=ResNetV1C()
     

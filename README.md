@@ -7,22 +7,15 @@
 | **Decode Head**    | **APCHead**       |
 | **Auxiliary Head** | **FCNHead**       |
 
-<img src="img/1.png" alt="source" style="zoom:50%;" />
-
-<img src="img/1-gt.png" alt="ground Truth" style="zoom:50%;" />
-
-<img src="img/1-pre.png" alt="ground Truth" style="zoom:50%;" />
-
-<img src="img/2.png" alt="source" style="zoom:50%;" />
-
-<img src="img/2-gt.png" alt="ground Truth" style="zoom:50%;" />
-
-<img src="img/2-pre.png" alt="ground Truth" style="zoom:50%;" />
-
+![source-1](./img/1.png)
+![ground truth-1](./img/1-gt.png)
+![prediction-1](./img/1-pre.png)
+***
+![source-1](./img/2.png)
+![ground truth-1](./img/2-gt.png)
+![prediction-1](./img/2-pre.png)
 
 ## Environment
-
-
 
 ```shell
 #torch 1.8.0
@@ -48,12 +41,15 @@ python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
 
 ## Weight tranpose：
 
+###参数对齐日志：
+
 ```shell
 cd paddle_apcnet/architectures
 cp apcnetxxx_torch.pth paddle_apcnet/architectures/pretrained/apcnetxxx_torch.pth
 python torchModel2pdModel.py #generate apcnetxxx_paddle.pdparams
 ```
-
+[百度网盘](https://pan.baidu.com/s/189PaYKvoN2SSQLisOoTvqw)
+提取码: mrla 
 
 
 ## Dataset：

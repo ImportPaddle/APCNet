@@ -18,7 +18,7 @@ class Trainer():
     def __init__(self,expName,resume=True,resume_inter='latest',config=None):
         super(Trainer,self).__init__()
         self.max_inter=500000
-        self.inter=0
+        self.inter=1
         self.optimizers_step_size=int(self.max_inter/100)
         self.config=CONFIG
         self.root=os.getcwd()
@@ -35,7 +35,7 @@ class Trainer():
         self.stepEachEpoch=(len(self.dataloaders['train'])+1)
         self.train_display_step=50
         self.train_save_step=2000
-        self.val_step=500
+        self.val_step=60000
         
         self.logger.info('init complete')
     def run(self):
@@ -97,7 +97,7 @@ class Trainer():
         networks,msg_resnet=getApcNet()
         pre_apcent=0
         if pre_apcent:
-            state=paddle.load('./architectures/pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.paparams')
+            state=paddle.load('./architectures/pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.pdparams')
             networks['backbone'].set_state_dict(state['models']['backbone'])
             networks['APCHead'].set_state_dict(state['models']['APCHead'])
             networks['FCNHead'].set_state_dict(state['models']['FCNHead'])
@@ -267,6 +267,7 @@ class Trainer():
                 os.remove(delete_path)
     def load_checkpoint(self):
         if self.resume_inter=='latest':
+
             ckpts=list(glob.glob(self.exp_dir+'/ckpt/*.pdparams'))
             latest=-1
             for ckpt in ckpts:
@@ -277,10 +278,13 @@ class Trainer():
             pass
         else:
             load_path=os.path.join(self.exp_dir,'ckpt',str(self.resume_inter)+'.pdparams')
-        print(load_path)
+        # print(load_path)
         try:
             state=paddle.load(load_path)
         except:
+            if latest==-1:
+                self.logger.info("no ckpt, no load ckpt")
+                return
             os.remove(load_path)
             ckpts=list(glob.glob(self.exp_dir+'/ckpt/*.pdparams'))
             latest=-1
@@ -334,5 +338,5 @@ if __name__=='__main__':
     # p=dict(a=1,b=2)
     # print(len(p))
     # print(len(p.items()))
-    trainer=Trainer(expName='apcnet-cityscapes-test',resume=0,resume_inter='latest',config=CONFIG)
+    trainer=Trainer(expName='apcnet-cityscapes-test',resume=1,resume_inter='latest',config=CONFIG)
     trainer.run()

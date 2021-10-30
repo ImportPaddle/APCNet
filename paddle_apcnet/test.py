@@ -131,7 +131,7 @@ def test():
     valDataset=CityScapesDataset(root='../dataset/cityscapes',mode='val',SEED=1)
     valLoader=DataLoader(valDataset,batch_size=1,drop_last=False,num_workers=4, shuffle=False,use_buffer_reader=True)
     models,msg_resnet=getApcNet()
-    state=paddle.load('./architectures/pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.paparams')
+    state=paddle.load('./architectures/pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.pdparams')
     models['backbone'].set_state_dict(state['models']['backbone'])
     models['APCHead'].set_state_dict(state['models']['APCHead'])
     models['FCNHead'].set_state_dict(state['models']['FCNHead'])
