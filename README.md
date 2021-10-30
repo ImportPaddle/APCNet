@@ -7,14 +7,14 @@
 | **Decode Head**    | **APCHead**       |
 | **Auxiliary Head** | **FCNHead**       |
 
-![source-1](./img/1.png)
-![ground truth-1](./img/1-gt.png)
-![prediction-1](./img/1-pre.png)
-***
-![source-1](./img/2.png)
-![ground truth-1](./img/2-gt.png)
-![prediction-1](./img/2-pre.png)
+![source](./img/1.png)
+![gt](./img/1-gt.png)
+![pre](./img/1-pre.png)
 
+***
+![source](./img/2.png)
+![gt](./img/2-gt.png)
+![pre](./img/2-pre.png)
 ## Environment
 
 ```shell
