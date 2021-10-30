@@ -59,9 +59,11 @@ class Trainer():
 
                 if self.inter % self.train_display_step == 0:
                     self.logger.info('inter{} , APC Loss:{} FCN Loss:{},lr:{}' \
-                                     .format(self.inter, self.Loss['apc_loss'] / self.Loss['step_cnt'],
-                                             self.Loss['fcn_loss'] / self.Loss['step_cnt']),
-                                     self.optimizers['APCHead'].get_lr(),
+                                     .format(self.inter,
+                                             self.Loss['apc_loss'] / self.Loss['step_cnt'],
+                                             self.Loss['fcn_loss'] / self.Loss['step_cnt'],
+                                             self.optimizers['APCHead'].get_lr(),
+                                             )
                                      )
                     self.Loss['step_cnt'] = 0
                     self.Loss['apc_loss'] = 0.0
@@ -76,7 +78,10 @@ class Trainer():
 
     def resume_experiment(self):
         self.load_checkpoint()
-
+        for i in range(self.inter):
+            self.scheduler['backbone'].step()
+            self.scheduler['APCHead'].step()
+            self.scheduler['FCNHead'].step()
     def init_exp_dir(self, expName):
         expdir = os.path.join(self.root, 'experiments', expName)
         if os.path.exists(expdir) and not self.resume:
