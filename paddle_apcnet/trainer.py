@@ -36,7 +36,7 @@ class Trainer():
         self.stepEachEpoch = (len(self.dataloaders['train']) + 1)
         self.train_display_step = 50
         self.train_save_step = 2000
-        self.val_step = 60000
+        self.val_step = 1
 
         self.logger.info('init complete')
 
@@ -293,7 +293,7 @@ class Trainer():
         self.models['backbone'].eval()
         self.models['APCHead'].eval()
         self.models['FCNHead'].eval()
-        ignore_label255 = 0
+        ignore_label255 = 255  # 0 ,255
         if not ignore_label255:
             confusionMatrix = np.zeros((20, 20))
         else:
@@ -317,7 +317,7 @@ class Trainer():
                 prediction[np.where(label.numpy() == 255)] = 255
             else:
                 pass
-            confusionMatrix += self.getConfusionMatrix(prediction, label.numpy(), ignore_label255)
+            confusionMatrix += self.getConfusionMatrix(prediction, label.numpy(), ignore_label=ignore_label255)
             del x, label, feature2, feature3, pre1, pre2, prediction
         miou, ious = self.getMiou(confusionMatrix, 19 if ignore_label255 else 20)
         self.logger.info('inter {} ,val miou:{}'.format(self.inter, miou))
