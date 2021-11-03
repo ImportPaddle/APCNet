@@ -43,6 +43,7 @@ def rename_state_dict(paddle_dict,torch_dict):
     print(len(torch_dict))
     print(len(paddle_dict))
     return result
+
 def trans():
     path = './pretrained/resnet101_v1c-e67eebb6.pth'
     torch_dict = torch.load(path)
@@ -74,6 +75,7 @@ def trans():
     
     paddle.save(paddle_dict, './pretrained/resnet101_v1c-e67eebb6.pdparams')
     # paddle_dict=paddle.load('./pretrained/resnet101_v1c-e67eebb6.pdparams')
+
 def see(path):
     state=torch.load(path)
     print(state.keys())

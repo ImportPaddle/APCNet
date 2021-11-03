@@ -8,4 +8,6 @@ CONFIG['optimizers']={
     'APCHead':dict(type='SGD', lr=1e-2, momentum=0.9, weight_decay=0.0005),
      'FCNHead':dict(type='SGD', lr=1e-2, momentum=0.9, weight_decay=0.0005),
     }
+
+CONFIG['dataset_root'] ='../dataset/cityscapes'
 # config['network']={'backbone':'resnet101','apc':}
