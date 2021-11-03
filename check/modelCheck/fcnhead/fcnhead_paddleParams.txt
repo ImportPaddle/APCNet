@@ -1,0 +1,7 @@
+conv_seg.weight	(19, 256, 1, 1)
+conv_seg.bias	(19,)
+convs.0.conv.weight	(256, 1024, 3, 3)
+convs.0.bn.weight	(256,)
+convs.0.bn.bias	(256,)
+convs.0.bn._mean	(256,)
+convs.0.bn._variance	(256,)

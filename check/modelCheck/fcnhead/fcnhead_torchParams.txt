@@ -1,0 +1,7 @@
+auxiliary_head.conv_seg.weight	(19, 256, 1, 1)
+auxiliary_head.conv_seg.bias	(19,)
+auxiliary_head.convs.0.conv.weight	(256, 1024, 3, 3)
+auxiliary_head.convs.0.bn.weight	(256,)
+auxiliary_head.convs.0.bn.bias	(256,)
+auxiliary_head.convs.0.bn.running_mean	(256,)
+auxiliary_head.convs.0.bn.running_var	(256,)
