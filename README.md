@@ -49,8 +49,8 @@ python torchModel2pdModel.py #generate apcnetxxx_paddle.pdparams
 ```
 [Ai studio](https://aistudio.baidu.com/bdv3/user/303267/2541370/doc/tree/work/paddle_apcnet/experiments/apcnet-cityscapes)
 
-[百度网盘](https://pan.baidu.com/s/189PaYKvoN2SSQLisOoTvqw)
-提取码: mrla 
+[百度网盘](https://pan.baidu.com/s/1LVe__pSaNhcxxCQrLnQi8w)
+提取码: ttqw 
 
 
 模型对齐：参考./check/modelCheck 以及paddle_apcnet/architectures下的 参数转化文件，以及转换结果文件
