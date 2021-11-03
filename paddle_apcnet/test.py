@@ -131,7 +131,7 @@ def test():
     valDataset=CityScapesDataset(root='../dataset/cityscapes',mode='val',SEED=1)
     valLoader=DataLoader(valDataset,batch_size=1,drop_last=False,num_workers=4, shuffle=False,use_buffer_reader=True)
     models,msg_resnet=getApcNet()
-    state=paddle.load('./architectures/pretrained/apcnet_r101-d8_512x1024_80k_cityscapes_20201214_115705-b1ff208a.pdparams')
+    state=paddle.load('./experiments/apcnet-cityscapes/ckpt/final.pdparams')
     models['backbone'].set_state_dict(state['models']['backbone'])
     models['APCHead'].set_state_dict(state['models']['APCHead'])
     models['FCNHead'].set_state_dict(state['models']['FCNHead'])
@@ -164,7 +164,7 @@ def test():
             pre1=models['APCHead'](feature3)
             pre2=models['FCNHead'](feature2)
             pre1=1.0*pre1+0.4*pre2
-            pre1=F.interpolate(x=pre1, size=[512,1024],mode="bilinear",align_corners=True)
+            pre1=F.interpolate(x=pre1, size=[512,1024],mode="bilinear")
             # pre2=F.interpolate(x=pre2, size=[512,1024])
             prediction=paddle.argmax(pre1,axis=1).numpy()
             
@@ -212,8 +212,8 @@ def test():
             
             del x,label,feature2,feature3,pre1,pre2
             # CRFs()     
-    miou,ious=getMiou(confusionMatrix,19 if ignore_label else 20)
-    print('miou:{}\n{}'.format(miou,ious))
+    miou,_=getMiou(confusionMatrix,19 if ignore_label else 20)
+    print('miou:{}'.format(miou))
 
 def testCRFs():
     labels=np.random.ranint(0,19,(512,1024))
