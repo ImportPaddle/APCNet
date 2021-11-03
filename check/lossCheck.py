@@ -25,7 +25,7 @@ def main():
     reprod_log_1 = ReprodLogger()
     reprod_log_2 = ReprodLogger()
     # shapes=[1,10,32,32]
-    pre_1=np.random.randn(5,(5,19,512,1024))
+    pre_1=np.random.randn(5,19,512,1024)
     target_1=np.random.randint(0,19,(5,512,1024))
 
 
