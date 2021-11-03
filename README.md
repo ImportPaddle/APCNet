@@ -112,8 +112,6 @@ python test.py
 直接跑apcnet训练好的转换后的torch模型，在val dataset 只有74.93%的miou
 
 
-由于训练轮次只有一半， APCNet(paddle) 的miou为 79.28% %
-
 | Model               | mIou   |
 | ------------------- | ------ |
 | APCNet(torch)       | 79.08% |
