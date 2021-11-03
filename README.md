@@ -1,16 +1,19 @@
 # Adaptive Pyramid Context Network for Semantic Segmentation
 
 
+##Easy to Run
+
+[AI Studio Link](https://aistudio.baidu.com/aistudio/projectdetail/2541370?contributionType=1&shared=1) @PaddlePaddle
+
 
 | **ackbone**        | **Resnet101_v1c** |
 | ------------------ | ----------------- |
 | **Decode Head**    | **APCHead**       |
 | **Auxiliary Head** | **FCNHead**       |
 
-![source](./img/1.png) ![gt](./img/1-gt.png) ![pre](./img/1-pre.png)
 
 ***
-![source](./img/2.png) ![gt](./img/2-gt.png) ![pre](./img/2-pre.png)
+![source](./img/img.png)
 ## Environment
 
 ```shell
@@ -37,16 +40,26 @@ python -m pip install paddlepaddle-gpu -i https://mirror.baidu.com/pypi/simple
 
 ## Weight tranpose：
 
-###参数对齐日志：
+###模型，日志,项目下载：
 
 ```shell
 cd paddle_apcnet/architectures
 cp apcnetxxx_torch.pth paddle_apcnet/architectures/pretrained/apcnetxxx_torch.pth
 python torchModel2pdModel.py #generate apcnetxxx_paddle.pdparams
 ```
+[Ai studio](https://aistudio.baidu.com/bdv3/user/303267/2541370/doc/tree/work/paddle_apcnet/experiments/apcnet-cityscapes)
+
 [百度网盘](https://pan.baidu.com/s/189PaYKvoN2SSQLisOoTvqw)
 提取码: mrla 
 
+
+模型对齐：参考./check/modelCheck 以及paddle_apcnet/architectures下的 参数转化文件，以及转换结果文件
+
+loss对齐：参考./check/ 下的 lossCheck.py
+
+miou对齐：参考./check/ 下的 metricCheck.py
+
+训练对齐： 参考下载链接中的日志文件
 
 ## Dataset：
 
@@ -95,19 +108,15 @@ python test.py
 
 
 
-
-
 ## Measure：
+直接跑apcnet训练好的转换后的torch模型，在val dataset 只有74.93%的miou
+
+
+由于训练轮次只有一半， APCNet(paddle) 的miou为 79.28% %
 
 | Model               | mIou   |
 | ------------------- | ------ |
 | APCNet(torch)       | 79.08% |
-| APCNet(paddle)(bilinear)      | 74.93% |
-| APCNet(paddle)(BICUBIC)      | 73.14% |
-| APCNet(paddle)(AREA)      | 72.22% |
-| APCNet(paddle)(bilinear)(APCHead+FCNHead)| 73.21% |
-| APCNet(paddle)(bilinear)(1.0APCHead+0.4FCNHead)| 73.49% |
-| APCNet+CRFs(paddle) | 72.47% |
-
+| APCNet(paddle)     | 79.28% |
 
 
